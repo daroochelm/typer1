@@ -25,13 +25,13 @@ export default function MatchCard({ match, user, existingPrediction = null }) {
 
     // Operacja UPSERT - doda nowy typ lub zaktualizuje istniejący
     const { error } = await supabase
-      .from('predictions')
-      .upsert({
-        user_id: user.id,
-        match_id: match.id,
-        home_score_guess: parseInt(homeScore, 10),
-        away_score_guess: parseInt(awayScore, 10)
-      }, { onConflict: 'user_id, match_id' }); // Wymaga tej unikalnej kombinacji z naszej bazy
+  .from('predictions')
+  .upsert({
+    user_id: user.id, // Upewnij się, że tu jest user.id, a nie coś innego
+    match_id: match.id,
+    home_score_guess: homeScore,
+    away_score_guess: awayScore
+  });
 
     if (error) {
       console.error('Błąd zapisu:', error);
