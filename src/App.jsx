@@ -31,8 +31,9 @@ function App() {
         const { data, error } = await supabase
           .from('matches')
           .select('*')
-          .eq('status', 'scheduled') // Tylko mecze, które jeszcze się nie zaczęły
-          .order('match_date', { ascending: true }); // Sortujemy od najbliższego
+          // Zmiana: Pobieramy mecze zaplanowane ORAZ trwające
+          .in('status', ['scheduled', 'live']) 
+          .order('match_date', { ascending: true });
 
         if (error) {
           console.error("Błąd pobierania meczów:", error);
