@@ -1,0 +1,8 @@
+{
+    "crons": [
+      {
+        "path": "/api/update-live-scores",
+        "schedule": "*/3 * * * *" 
+      }
+    ]
+  }
