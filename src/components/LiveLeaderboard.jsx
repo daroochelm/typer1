@@ -1,8 +1,7 @@
-import { motion } from 'framer-motion';
 import { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
+import { motion } from 'framer-motion';
 
-// Nasza funkcja wyliczająca umieszczona poza komponentem
 const calculateVirtualPoints = (realHome, realAway, guessHome, guessAway) => {
   if (realHome === null || realAway === null) return 0;
   if (realHome === guessHome && realAway === guessAway) return 3;
@@ -18,10 +17,8 @@ export default function LiveLeaderboard() {
   const [baseLeaderboard, setBaseLeaderboard] = useState([]);
   const [dynamicLeaderboard, setDynamicLeaderboard] = useState([]);
 
-  // KROK 1: Inicjalizacja danych (Mecze, Typy, Baza punktów)
   useEffect(() => {
     const fetchInitialData = async () => {
-      // Pobieramy trwające mecze
       const { data: matches } = await supabase
         .from('matches')
         .select('*')
@@ -29,7 +26,6 @@ export default function LiveLeaderboard() {
       
       if (matches) setLiveMatches(matches);
 
-      // Pobieramy typy (Tylko dla meczów, które trwają)
       if (matches && matches.length > 0) {
         const liveMatchIds = matches.map(m => m.id);
         const { data: preds } = await supabase
@@ -39,18 +35,16 @@ export default function LiveLeaderboard() {
         if (preds) setPredictions(preds);
       }
 
-      // Pobieramy bazowy ranking (punkty z zakończonych meczów)
-      // Wymaga połączenia z tabelą users/profiles, żeby mieć nazwy graczy
+      // POPRAWKA: Pytamy prosto o nasz nowy widok SQL!
       const { data: board } = await supabase
         .from('leaderboard')
-        .select('*, profiles(display_name)');
+        .select('*');
       
       if (board) setBaseLeaderboard(board);
     };
 
     fetchInitialData();
 
-    // Nasłuchiwanie na gole w czasie rzeczywistym
     const channel = supabase.channel('live-matches')
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'matches' }, (payload) => {
         setLiveMatches(current => current.map(m => m.id === payload.new.id ? payload.new : m));
@@ -60,57 +54,48 @@ export default function LiveLeaderboard() {
     return () => supabase.removeChannel(channel);
   }, []);
 
-  // KROK 2: Logika przeliczania rankingu "w locie"
-  // Ten useEffect odpali się za każdym razem, gdy wpada nowy gol (czyli zmienia się stan liveMatches)
   useEffect(() => {
+    // Jeśli nie ma graczy w bazie, nie robimy nic
     if (baseLeaderboard.length === 0) return;
 
-    // Kopiujemy bazowy ranking
     const newDynamicBoard = baseLeaderboard.map(player => {
       let virtualPoints = 0;
-
-      // Szukamy wszystkich typów tego gracza dla trwających spotkań
       const playerPredictions = predictions.filter(p => p.user_id === player.user_id);
 
       playerPredictions.forEach(pred => {
-        // Znajdujemy aktualny wynik na żywo dla tego typu
         const liveMatch = liveMatches.find(m => m.id === pred.match_id);
-        
         if (liveMatch) {
           virtualPoints += calculateVirtualPoints(
-            liveMatch.home_score, 
-            liveMatch.away_score, 
-            pred.home_score_guess, 
-            pred.away_score_guess
+            liveMatch.home_score, liveMatch.away_score, 
+            pred.home_score_guess, pred.away_score_guess
           );
         }
       });
 
-      // Zwracamy gracza ze zaktualizowaną liczbą punktów
       return {
         ...player,
-        currentTotal: player.total_points + virtualPoints, // Twarde punkty + wirtualne
-        virtualPointsAdded: virtualPoints // Przydatne, by pokazać w UI zielone "+3" obok wyniku
+        currentTotal: player.total_points + virtualPoints,
+        virtualPointsAdded: virtualPoints
       };
     });
 
-    // Sortujemy nową tabelę od największej liczby punktów
     newDynamicBoard.sort((a, b) => b.currentTotal - a.currentTotal);
-    
     setDynamicLeaderboard(newDynamicBoard);
 
   }, [liveMatches, predictions, baseLeaderboard]);
 
+  // Zapobiegamy wyświetlaniu pustego bloku, gdy ładują się dane
+  if (dynamicLeaderboard.length === 0) return null;
+
   return (
-    <div className="w-full max-w-2xl bg-white rounded-xl shadow-sm border border-gray-100 p-5 mt-6">
+    <div className="w-full bg-white rounded-xl shadow-sm border border-gray-100 p-5 mt-6">
       <h2 className="text-xl font-bold mb-4 text-gray-800 flex items-center">
         <span className="w-2 h-2 rounded-full bg-red-600 animate-pulse mr-2"></span>
-        Ranking na żywo
+        Ranking Typerów
       </h2>
       
       <div className="space-y-2">
         {dynamicLeaderboard.map((player, index) => (
-          // Zamieniamy <div> na <motion.div layout> i dodajemy klucz (layoutId)
           <motion.div 
             key={player.user_id} 
             layout 
@@ -121,7 +106,8 @@ export default function LiveLeaderboard() {
           >
             <div className="flex items-center space-x-4">
               <span className="font-black text-gray-400 w-6 text-right">{index + 1}.</span>
-              <span className="font-semibold text-gray-700">{player.profiles?.display_name || 'Gracz'}</span>
+              {/* POPRAWKA: Bierzemy display_name bezpośrednio z widoku */}
+              <span className="font-semibold text-gray-700">{player.display_name || 'Nieznany Gracz'}</span>
             </div>
             
             <div className="flex items-center space-x-3">
