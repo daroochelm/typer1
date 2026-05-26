@@ -7,9 +7,11 @@ const supabase = createClient(
 );
 
 export default async function handler(req, res) {
+    console.log("1. Hasło z panelu Vercel to:", process.env.CRON_SECRET);
+    console.log("2. Nagłówek odebrany z cron-job.org to:", req.headers.authorization);
   // Opcjonalne: zabezpieczenie endpointu przed nieautoryzowanym uruchomieniem
   if (req.headers.authorization !== `Bearer ${process.env.CRON_SECRET}`) {
-    return res.status(401).json({ error: 'Brak autoryzacji' });
+    return res.status(401).json({ error: 'Unauthorized' });
   }
 
   try {
