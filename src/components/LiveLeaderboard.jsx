@@ -84,13 +84,38 @@ export default function LiveLeaderboard() {
 
   }, [liveMatches, predictions, baseLeaderboard]);
 
-  // Zapobiegamy wyświetlaniu pustego bloku, gdy ładują się dane
+  // Jeśli nie ma danych o rankingu, nie wyświetlamy komponentu
   if (dynamicLeaderboard.length === 0) return null;
 
   return (
     <div className="w-full bg-white rounded-xl shadow-sm border border-gray-100 p-5 mt-6">
+      
+      {/* SEKCJA 1: WYNIKI NA ŻYWO */}
+      <div className="mb-6 pb-6 border-b border-gray-100">
+        <h2 className="text-xl font-bold mb-4 text-red-600 flex items-center">
+          <span className="w-2 h-2 rounded-full bg-red-600 animate-pulse mr-2"></span>
+          Trwające mecze
+        </h2>
+        
+        <div className="space-y-3">
+          {liveMatches.length === 0 ? (
+            <p className="text-sm text-gray-500 italic">Obecnie nie toczą się żadne spotkania.</p>
+          ) : (
+            liveMatches.map((match) => (
+              <div key={match.id} className="flex justify-between items-center p-3 bg-red-50 rounded-lg border border-red-100">
+                <span className="font-semibold text-gray-800 w-1/3 text-right text-lg">{match.home_team}</span>
+                <div className="w-1/3 flex justify-center text-3xl font-black text-red-600 tracking-widest">
+                  {match.home_score ?? 0} : {match.away_score ?? 0}
+                </div>
+                <span className="font-semibold text-gray-800 w-1/3 text-left text-lg">{match.away_team}</span>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+
+      {/* SEKCJA 2: RANKING TYPERÓW */}
       <h2 className="text-xl font-bold mb-4 text-gray-800 flex items-center">
-        <span className="w-2 h-2 rounded-full bg-red-600 animate-pulse mr-2"></span>
         Ranking Typerów
       </h2>
       
@@ -106,7 +131,6 @@ export default function LiveLeaderboard() {
           >
             <div className="flex items-center space-x-4">
               <span className="font-black text-gray-400 w-6 text-right">{index + 1}.</span>
-              {/* POPRAWKA: Bierzemy display_name bezpośrednio z widoku */}
               <span className="font-semibold text-gray-700">{player.display_name || 'Nieznany Gracz'}</span>
             </div>
             
